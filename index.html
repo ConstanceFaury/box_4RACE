@@ -163,7 +163,7 @@
                             <div class="timing-display-box">
                                 <div class="timing-label" id="lap-title-${id}">Dernier Passage (Tour 0)</div>
                                 <div id="last-lap-${id}" class="time-main monospace">--:--.---</div>
-                                <div id="delta-${id}" class="time-delta monospace">$\Delta$ --.---</div>
+                                <div id="delta-${id}" class="time-delta monospace">Δ --.---</div>
                             </div>
 
                             <div class="autonomie-footer">
@@ -173,7 +173,7 @@
                             <div>
                                 <table class="history-table">
                                     <thead>
-                                        <tr><th>Tour</th><th>Temps</th><th>Delta ($\Delta$)</th></tr>
+                                        <tr><th>Tour</th><th>Temps</th><th>Δ Best</th></tr>
                                     </thead>
                                     <tbody id="history-body-${id}" class="monospace">
                                         <tr><td colspan="3" style="color:var(--4race-text-muted); padding: 10px;">Aucun chrono détecté</td></tr>
@@ -208,10 +208,10 @@
                         const dWidget = document.getElementById(`delta-${id}`);
                         if (car.deltaWithBest) {
                             const isPositive = car.deltaWithBest.startsWith("+");
-                            dWidget.innerText = `$\Delta$ ${car.deltaWithBest}`;
+                            dWidget.innerText = `Δ ${car.deltaWithBest}`;
                             dWidget.style.color = isPositive ? "var(--state-alert)" : "var(--state-green)";
                         } else {
-                            dWidget.innerText = "$\Delta$ --.---";
+                            dWidget.innerText = "Δ --.---";
                             dWidget.style.color = "var(--4race-text-muted)";
                         }
                     }
