@@ -69,12 +69,13 @@
         .badge-stand { background-color: rgba(59, 130, 246, 0.1); color: var(--state-pit); }
         .badge-alert { background-color: var(--state-alert); color: #fff; }
 
-        /* Style pour la popup d'accès */
-        .popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+        /* Styles de la popup d'identification */
+        .popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999; display: flex; align-items: center; justify(content: center; backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; }
         .popup-box { background: var(--4race-card); border: 2px solid var(--4race-coral); padding: 40px; border-radius: 12px; text-align: center; width: 90%; max-width: 450px; }
         .ctrl-btn { padding: 12px; border-radius: 6px; font-weight: 700; text-transform: uppercase; font-size: 13px; cursor: pointer; border: none; width: 100%; margin-top: 15px; background: var(--4race-coral); color: white; }
         .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
         .form-group input { background: #16161f; border: 1px solid var(--4race-card-border); color: #fff; padding: 12px; border-radius: 6px; font-size: 14px; width: 100%; text-align: center; font-weight: bold; }
+
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes flash-card { 0%, 100% { box-shadow: 0 0 4px rgba(239,68,68,0); } 50% { box-shadow: 0 0 15px rgba(239,68,68,0.4); background-color: #170707; } }
         @keyframes flash-red { 0%, 100% { border-color: var(--state-alert); box-shadow: 0 0 12px rgba(239,68,68,0.6); } 50% { border-color: #1a1a1a; box-shadow: none; } }
@@ -123,7 +124,7 @@
         };
 
         window.fleetState = {};
-        window.boxFilterMode = "GLOBAL"; // Mode par défaut au chargement
+        window.boxFilterMode = "GLOBAL"; // Mode global initial
 
         // Fonction de validation du code saisi au Box avec masquage instantané
         window.validateBoxAccess = function() {
@@ -143,7 +144,7 @@
                     window.boxFilterMode = targetChassis;
                     document.getElementById("box-login-popup").style.display = "none";
                     
-                    // Application immédiate du filtre sur l'existant
+                    // Application immédiate du filtre sur les structures existantes
                     Object.keys(window.fleetState).forEach(id => {
                         const car = window.fleetState[id];
                         const currentNum = car?.carNumInput || "";
@@ -250,7 +251,7 @@
                     document.getElementById(`num-${id}`).innerText = "#" + currentNum;
                     document.getElementById(`team-${id}`).innerText = car.teamNameInput || "";
                     
-                    // --- ⚙️ PERSISTENCE DU FILTRE LORS DES MISES À JOUR CLOUD ---
+                    // --- ⚙️ PERSISTENCE DU FILTRE LORS DES MISES À JOUR CONTINUES ---
                     const cardElement = document.getElementById(`card-${id}`);
                     if (cardElement) {
                         if (window.boxFilterMode !== "GLOBAL" && window.boxFilterMode !== currentNum) {
@@ -316,7 +317,7 @@
                         }
                     }
 
-                    // Statuts & Couleurs
+                    // Statuts & Couleurs de la carte
                     const card = document.getElementById(`card-${id}`);
                     const badge = document.getElementById(`badge-${id}`);
                     card.className = "car-card"; card.removeAttribute("style");
