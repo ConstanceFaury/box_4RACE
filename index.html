@@ -69,12 +69,28 @@
         .badge-stand { background-color: rgba(59, 130, 246, 0.1); color: var(--state-pit); }
         .badge-alert { background-color: var(--state-alert); color: #fff; }
 
+        /* Style pour la popup d'accès */
+        .popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+        .popup-box { background: var(--4race-card); border: 2px solid var(--4race-coral); padding: 40px; border-radius: 12px; text-align: center; width: 90%; max-width: 450px; }
+        .ctrl-btn { padding: 12px; border-radius: 6px; font-weight: 700; text-transform: uppercase; font-size: 13px; cursor: pointer; border: none; width: 100%; margin-top: 15px; background: var(--4race-coral); color: white; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+        .form-group input { background: #16161f; border: 1px solid var(--4race-card-border); color: #fff; padding: 12px; border-radius: 6px; font-size: 14px; width: 100%; text-align: center; font-weight: bold; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes flash-card { 0%, 100% { box-shadow: 0 0 4px rgba(239,68,68,0); } 50% { box-shadow: 0 0 15px rgba(239,68,68,0.4); background-color: #170707; } }
         @keyframes flash-red { 0%, 100% { border-color: var(--state-alert); box-shadow: 0 0 12px rgba(239,68,68,0.6); } 50% { border-color: #1a1a1a; box-shadow: none; } }
     </style>
 </head>
 <body>
+
+    <div id="box-login-popup" class="popup-overlay">
+        <div class="popup-box">
+            <h2 style="font-style: italic; margin-bottom: 20px; letter-spacing: 0.5px;">🔒 IDENTIFICATION MONITEUR BOX</h2>
+            <div class="form-group">
+                <input type="text" id="box-code" placeholder="CODE ACCÈS (Ex: BOX531 ou BOXG)" style="text-transform: uppercase;">
+            </div>
+            <button class="ctrl-btn" onclick="window.validateBoxAccess()">VALIDER L'ACCÈS</button>
+        </div>
+    </div>
 
     <header>
         <div class="logo-area">
@@ -107,9 +123,49 @@
         };
 
         window.fleetState = {};
+        window.boxFilterMode = "GLOBAL"; // Mode par défaut au chargement
+
+        // Fonction de validation du code saisi au Box avec masquage instantané
+        window.validateBoxAccess = function() {
+            const code = document.getElementById("box-code").value.trim().toUpperCase();
+            if (!code.startsWith("BOX")) {
+                alert("Code invalide ! Le code doit commencer par 'BOX' (ex: BOX531 ou BOXG).");
+                return;
+            }
+
+            if (code === "BOXG") {
+                window.boxFilterMode = "GLOBAL";
+                document.getElementById("box-login-popup").style.display = "none";
+                document.querySelectorAll('.car-card').forEach(card => card.style.display = "flex");
+            } else {
+                const targetChassis = code.replace("BOX", "");
+                if(targetChassis.length > 0) {
+                    window.boxFilterMode = targetChassis;
+                    document.getElementById("box-login-popup").style.display = "none";
+                    
+                    // Application immédiate du filtre sur l'existant
+                    Object.keys(window.fleetState).forEach(id => {
+                        const car = window.fleetState[id];
+                        const currentNum = car?.carNumInput || "";
+                        const cardElement = document.getElementById(`card-${id}`);
+                        
+                        if (cardElement) {
+                            if (currentNum !== targetChassis) {
+                                cardElement.style.display = "none";
+                            } else {
+                                cardElement.style.display = "flex";
+                            }
+                        }
+                    });
+                } else {
+                    alert("Code incomplet !");
+                }
+            }
+        };
 
         onValue(ref(db, 'strategie_flotte'), (snapshot) => {
             const data = snapshot.val(); if(!data) return;
+            window.selectedCircuit = data.selectedCircuit || "SPA";
             
             // Bannière de Piste
             const banner = document.getElementById("track-banner");
@@ -190,8 +246,21 @@
                     const car = data.cars[id];
                     window.fleetState[id] = car;
 
-                    document.getElementById(`num-${id}`).innerText = "#" + (car.carNumInput || "--");
+                    const currentNum = car.carNumInput || "--";
+                    document.getElementById(`num-${id}`).innerText = "#" + currentNum;
                     document.getElementById(`team-${id}`).innerText = car.teamNameInput || "";
+                    
+                    // --- ⚙️ PERSISTENCE DU FILTRE LORS DES MISES À JOUR CLOUD ---
+                    const cardElement = document.getElementById(`card-${id}`);
+                    if (cardElement) {
+                        if (window.boxFilterMode !== "GLOBAL" && window.boxFilterMode !== currentNum) {
+                            cardElement.style.display = "none";
+                            return;
+                        } else {
+                            cardElement.style.display = "flex";
+                        }
+                    }
+
                     document.getElementById(`pos-${id}`).innerText = car.position || "-";
                     
                     const pilotIdx = car.rotation?.[0] || "1";
@@ -200,7 +269,6 @@
                     const nextPilotIdx = car.rotation?.[1] || "2";
                     document.getElementById(`next-pilot-${id}`).innerText = car.pilotsInputs?.[nextPilotIdx] || "-";
 
-                    // Injection Chronos RIS-Timing
                     if (document.getElementById(`last-lap-${id}`)) {
                         document.getElementById(`lap-title-${id}`).innerText = `Dernier Passage (Tour ${car.currentLap || 0})`;
                         document.getElementById(`last-lap-${id}`).innerText = car.lastLapTime || "--:--.---";
@@ -233,15 +301,14 @@
                         document.getElementById(`stop-${id}`).innerText = "--:--:--";
                     }
 
-                    // Historique des tours (Tableau du bas)
+                    // Historique
                     const hBody = document.getElementById(`history-body-${id}`);
                     if (hBody) {
                         if (car.history && car.history.length > 0) {
                             let hHtml = "";
-                            // On prend les 3 derniers tours de l'historique
                             car.history.slice(-3).reverse().forEach(h => {
                                 const deltaColor = h.delta.startsWith("+") ? "var(--state-alert)" : "var(--state-green)";
-                                hHtml += `<tr><td>${h.lap}</td><td>${h.time}</td><td style="color:${deltaColor}">${h.delta}</td></tr>`;
+                                hHtml += `<tr><td>${h.lap}</td><td>${h.time}</td><td style="color:${deltaColor}">Δ ${h.delta.replace('+','')}</td></tr>`;
                             });
                             hBody.innerHTML = hHtml;
                         } else {
@@ -249,16 +316,17 @@
                         }
                     }
 
-                    // Statuts & Couleurs de la carte
+                    // Statuts & Couleurs
                     const card = document.getElementById(`card-${id}`);
                     const badge = document.getElementById(`badge-${id}`);
                     card.className = "car-card"; card.removeAttribute("style");
 
                     let bText = "En Piste"; let bClass = "status-badge badge-piste";
+                    const isInsidePitlane = car.carState === "IN" || car.carState === "FUEL" || car.carState === "OUT" || car.isInsidePit;
 
                     if (data.isRedFlag) {
                         card.classList.add("state-red-flag"); bText = "STOPPÉ (D. ROUGE)"; bClass = "status-badge badge-alert";
-                    } else if (car.carState === "IN" || car.carState === "FUEL" || car.carState === "OUT" || car.isInsidePit) {
+                    } else if (isInsidePitlane) {
                         card.classList.add("state-pit"); bText = car.carState === "FUEL" ? "⚡ POMPE" : "STAND"; bClass = "status-badge badge-stand";
                         if(car.carState === "FUEL") { card.style.borderLeft = "4px solid #3498db"; card.style.backgroundColor = "#07111a"; }
                     } else {
@@ -291,46 +359,6 @@
                 }
             });
         }, 1000);
-
-        // Fonction de validation du code saisi au Box avec masquage instantané
-        window.validateBoxAccess = function() {
-            const code = document.getElementById("box-code").value.trim().toUpperCase();
-            if (!code.startsWith("BOX")) {
-                alert("Code invalide ! Le code doit commencer par 'BOX' (ex: BOX531 ou BOXG).");
-                return;
-            }
-
-            if (code === "BOXG") {
-                window.boxFilterMode = "GLOBAL";
-                document.getElementById("box-login-popup").style.display = "none";
-                // On réaffiche tout le monde
-                document.querySelectorAll('.car-card').forEach(card => card.style.display = "flex");
-            } else {
-                const targetChassis = code.replace("BOX", "");
-                if(targetChassis.length > 0) {
-                    window.boxFilterMode = targetChassis; // Stocke par exemple "531"
-                    document.getElementById("box-login-popup").style.display = "none";
-                    
-                    // ⚡ CORRECTIF : On applique le filtre immédiatement sur les cartes déjà dessinées
-                    Object.keys(window.fleetState).forEach(id => {
-                        const car = window.fleetState[id];
-                        const currentNum = car?.carNumInput || "";
-                        const cardElement = document.getElementById(`card-${id}`);
-                        
-                        if (cardElement) {
-                            if (currentNum !== targetChassis) {
-                                cardElement.style.display = "none";
-                            } else {
-                                cardElement.style.display = "flex";
-                            }
-                        }
-                    });
-                } else {
-                    alert("Code incomplet !");
-                }
-            }
-        };
-        
     </script>
 </body>
 </html>
