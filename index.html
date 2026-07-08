@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4-RACE Cockpit V2 Pro - Moniteur Box</title>
+    <style>
+        :root {
+            --4race-coral: #FF4719;
+            --4race-bg: #050507;
+            --4race-card: #0f0f13;
+            --4race-card-border: #1e1e26;
+            --4race-text: #f1f5f9;
+            --4race-text-muted: #64748b;
+            --state-green: #22C55E;
+            --state-fcy: #EAB308;
+            --state-alert: #EF4444;
+            --state-pit: #3b82f6;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Montserrat:ital,wght@0,400;0,600;0,700;1,400;1,700&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Montserrat', sans-serif; }
+        body { background-color: var(--4race-bg); color: var(--4race-text); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .monospace { font-family: 'JetBrains Mono', monospace; }
+        
+        header { background-color: #0a0a0d; border-bottom: 1px solid var(--4race-card-border); padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; }
+        .logo-area h1 { font-size: 22px; text-transform: uppercase; font-style: italic; font-weight: 700; }
+        .logo-area h1 span { color: var(--4race-coral); }
+        .logo-sub { font-size: 11px; color: var(--4race-text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .status-banner { padding: 10px 25px; font-weight: 700; font-size: 14px; text-align: center; background-color: var(--state-green); color: #000; text-transform: uppercase; transition: all 0.3s; }
+        .status-banner.fcy { background-color: var(--state-fcy); color: #000; }
+        .status-banner.redflag { background-color: var(--state-alert); color: #fff; animation: blink 1s infinite; }
+
+        .box-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; padding: 20px; flex-grow: 1; overflow-y: auto; }
+        .car-card { background-color: var(--4race-card); border: 1px solid var(--4race-card-border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px; position: relative; }
+        
+        .car-card.state-pit { border-left: 4px solid var(--state-pit); background-color: #0b0f19; }
+        .car-card.state-fcy { border-left: 4px solid var(--state-fcy); background-color: #14120a; }
+        .car-card.state-alert { border-color: var(--state-alert); animation: flash-card 1.5s infinite; }
+        .car-card.state-red-flag { border: 2px solid var(--state-alert) !important; animation: flash-red 1s infinite !important; }
+        
+        .car-header { display: flex; justify-content: space-between; align-items: center; }
+        .car-num { font-size: 36px; font-weight: 800; color: #fff; font-style: italic; }
+        
+        .mini-stats { display: flex; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 8px; border: 1px solid #16161f; font-size: 11px; }
+        .mini-stats span { color: var(--4race-text-muted); text-transform: uppercase; font-weight: bold; }
+        .mini-stats strong { color: #fff; display: block; font-size: 13px; }
+
+        .pilot-zone { font-size: 11px; color: var(--4race-text-muted); text-transform: uppercase; font-weight: bold; }
+        .pilot-name { font-size: 20px; font-weight: 700; color: #fff; margin-top: 2px; }
+
+        .stint-widgets { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: rgba(0,0,0,0.4); padding: 8px 12px; border-radius: 8px; border: 1px solid #16161f; font-size: 11px; }
+        .widget-item label { display: block; color: var(--4race-text-muted); text-transform: uppercase; font-size: 9px; font-weight: bold; margin-bottom: 2px; }
+        .widget-item span { font-weight: bold; font-size: 14px; }
+
+        .timing-display-box { background: #000; border-radius: 12px; border: 1px solid #16161f; padding: 15px; text-align: center; position: relative; }
+        .timing-label { font-size: 9px; color: var(--4race-text-muted); font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .time-main { font-size: 38px; font-weight: 700; color: #fff; margin: 4px 0; letter-spacing: 1px; }
+        .time-delta { font-size: 18px; font-weight: bold; color: var(--4race-text-muted); }
+
+        .autonomie-footer { font-size: 11px; text-align: center; color: var(--4race-text-muted); background: rgba(0,0,0,0.2); padding: 6px; border-radius: 6px; }
+
+        .history-table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 11px; text-align: center; }
+        .history-table th { font-size: 9px; color: var(--4race-text-muted); text-transform: uppercase; padding-bottom: 6px; border-bottom: 1px solid var(--4race-card-border); }
+        .history-table td { padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,0.02); }
+
+        .status-badge { padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+        .badge-piste { background-color: rgba(34, 197, 94, 0.1); color: var(--state-green); }
+        .badge-stand { background-color: rgba(59, 130, 246, 0.1); color: var(--state-pit); }
+        .badge-alert { background-color: var(--state-alert); color: #fff; }
+
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes flash-card { 0%, 100% { box-shadow: 0 0 4px rgba(239,68,68,0); } 50% { box-shadow: 0 0 15px rgba(239,68,68,0.4); background-color: #170707; } }
+        @keyframes flash-red { 0%, 100% { border-color: var(--state-alert); box-shadow: 0 0 12px rgba(239,68,68,0.6); } 50% { border-color: #1a1a1a; box-shadow: none; } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-area">
+            <h1><span>4</span>-RACE</h1>
+            <span class="logo-sub">Moniteur Box Télémétrie</span>
+        </div>
+        <div style="text-align: right;">
+            <div id="weather-badge" style="font-weight: bold; font-size: 14px;">☀️ SEC</div>
+        </div>
+    </header>
+
+    <div id="track-banner" class="status-banner">🟢 PISTE DÉGAGÉE</div>
+
+    <div class="box-grid" id="box-cards-container"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = { databaseURL: "https://dashfuncup-4-race-default-rtdb.europe-west1.firebasedatabase.app/" };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        window.circuitsDatabase = {
+            "SPA": { mode: "TIME_LIMIT", refSec: 185, refPluie: 205 },
+            "Castellet": { mode: "WINDOW_LIMIT", refSec: 152, refPluie: 169 },
+            "Dijon": { mode: "WINDOW_LIMIT", refSec: 83, refPluie: 95 },
+            "Nogaro": { mode: "WINDOW_LIMIT", refSec: 104, refPluie: 116 },
+            "Magny-cours": { mode: "WINDOW_LIMIT", refSec: 118, refPluie: 131 }
+        };
+
+        window.fleetState = {};
+
+        onValue(ref(db, 'strategie_flotte'), (snapshot) => {
+            const data = snapshot.val(); if(!data) return;
+            
+            // Bannière de Piste
+            const banner = document.getElementById("track-banner");
+            if(data.isRedFlag) {
+                banner.innerText = "🔴 DRAPEAU ROUGE - STOP EN PISTE"; banner.className = "status-banner redflag";
+            } else if(data.isFCY) {
+                banner.innerText = "🟨 FCY EN COURS - VITESSE RÉDUITE"; banner.className = "status-banner fcy";
+            } else {
+                banner.innerText = "🟢 PISTE DÉGAGÉE"; banner.className = "status-banner";
+            }
+
+            // Météo
+            const weatherLabels = { sec: "☀️ SEC", pluie_moderee: "🌧️ PLUIE MODÉRÉE", forte_pluie: "⛈️ FORTE PLUIE" };
+            document.getElementById("weather-badge").innerText = weatherLabels[data.weatherMode] || "☀️ SEC";
+
+            const container = document.getElementById("box-cards-container");
+            if(container.children.length === 0 && data.cars) {
+                let html = "";
+                Object.keys(data.cars).forEach(id => {
+                    html += `
+                        <div id="card-${id}" class="car-card">
+                            <div class="car-header">
+                                <div>
+                                    <div class="car-num" id="num-${id}">#--</div>
+                                    <div id="team-${id}" style="font-size:11px; color:var(--4race-text-muted); font-weight:600;">-</div>
+                                </div>
+                                <span id="badge-${id}" class="status-badge badge-piste">En Piste</span>
+                            </div>
+                            
+                            <div class="mini-stats">
+                                <div><span>Pos</span><strong id="pos-${id}">-</strong></div>
+                                <div style="text-align: right;"><span>Best Absolu</span><strong id="best-${id}" style="color: #9b59b6;" class="monospace">--:--.---</strong></div>
+                            </div>
+
+                            <div>
+                                <div class="pilot-zone">Pilote en Piste</div>
+                                <div id="pilot-${id}" class="pilot-name">-</div>
+                            </div>
+
+                            <div class="stint-widgets">
+                                <div class="widget-item">
+                                    <label>⏳ Temps Relais</label>
+                                    <span id="time-${id}" style="color: var(--state-fcy);" class="monospace">-- min</span>
+                                </div>
+                                <div class="widget-item" style="text-align: right;">
+                                    <label>👤 Prochain Pilote</label>
+                                    <span id="next-pilot-${id}" style="color: #9b59b6;">-</span>
+                                </div>
+                            </div>
+
+                            <div class="timing-display-box">
+                                <div class="timing-label" id="lap-title-${id}">Dernier Passage (Tour 0)</div>
+                                <div id="last-lap-${id}" class="time-main monospace">--:--.---</div>
+                                <div id="delta-${id}" class="time-delta monospace">$\Delta$ --.---</div>
+                            </div>
+
+                            <div class="autonomie-footer">
+                                Autonomie : <strong id="laps-${id}" style="color:#fff;">- tr</strong> | Est. Arrêt : <strong id="stop-${id}" style="color:var(--4race-coral); font-family: monospace;">--:--:--</strong>
+                            </div>
+
+                            <div>
+                                <table class="history-table">
+                                    <thead>
+                                        <tr><th>Tour</th><th>Temps</th><th>Delta ($\Delta$)</th></tr>
+                                    </thead>
+                                    <tbody id="history-body-${id}" class="monospace">
+                                        <tr><td colspan="3" style="color:var(--4race-text-muted); padding: 10px;">Aucun chrono détecté</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>`;
+                });
+                container.innerHTML = html;
+            }
+
+            if(data.cars) {
+                Object.keys(data.cars).forEach(id => {
+                    const car = data.cars[id];
+                    window.fleetState[id] = car;
+
+                    document.getElementById(`num-${id}`).innerText = "#" + (car.carNumInput || "--");
+                    document.getElementById(`team-${id}`).innerText = car.teamNameInput || "";
+                    document.getElementById(`pos-${id}`).innerText = car.position || "-";
+                    
+                    const pilotIdx = car.rotation?.[0] || "1";
+                    document.getElementById(`pilot-${id}`).innerText = car.pilotsInputs?.[pilotIdx] || "-";
+
+                    const nextPilotIdx = car.rotation?.[1] || "2";
+                    document.getElementById(`next-pilot-${id}`).innerText = car.pilotsInputs?.[nextPilotIdx] || "-";
+
+                    // Injection Chronos RIS-Timing
+                    if (document.getElementById(`last-lap-${id}`)) {
+                        document.getElementById(`lap-title-${id}`).innerText = `Dernier Passage (Tour ${car.currentLap || 0})`;
+                        document.getElementById(`last-lap-${id}`).innerText = car.lastLapTime || "--:--.---";
+                        
+                        const dWidget = document.getElementById(`delta-${id}`);
+                        if (car.deltaWithBest) {
+                            const isPositive = car.deltaWithBest.startsWith("+");
+                            dWidget.innerText = `$\Delta$ ${car.deltaWithBest}`;
+                            dWidget.style.color = isPositive ? "var(--state-alert)" : "var(--state-green)";
+                        } else {
+                            dWidget.innerText = "$\Delta$ --.---";
+                            dWidget.style.color = "var(--4race-text-muted)";
+                        }
+                    }
+                    document.getElementById(`best-${id}`).innerText = car.bestLapTime || "--:--.---";
+
+                    // Autonomie Essence
+                    const fuelVal = parseFloat(car.fuel) || 0;
+                    let coeff = data.weatherMode === "forte_pluie" ? 0.40 : (data.isFCY ? 0.50 : (data.weatherMode === "pluie_moderee" ? 0.75 : 1.0));
+                    let currentConso = (car.conso?.[pilotIdx]?.sec || 1.77) * coeff; if(data.isRedFlag) currentConso = 0;
+                    const lapsLeft = currentConso > 0 ? Math.floor(fuelVal / currentConso) : 0;
+                    
+                    document.getElementById(`laps-${id}`).innerText = lapsLeft + " tr";
+                    
+                    if(lapsLeft > 0) {
+                        const refS = data.weatherMode === "sec" ? 185 : 205;
+                        const heureC = new Date(Date.now() + (lapsLeft * refS * (data.isFCY?1.4:1.0) * 1000));
+                        document.getElementById(`stop-${id}`).innerText = `${String(heureC.getHours()).padStart(2,'0')}:${String(heureC.getMinutes()).padStart(2,'0')}:${String(heureC.getSeconds()).padStart(2,'0')}`;
+                    } else {
+                        document.getElementById(`stop-${id}`).innerText = "--:--:--";
+                    }
+
+                    // Historique des tours (Tableau du bas)
+                    const hBody = document.getElementById(`history-body-${id}`);
+                    if (hBody) {
+                        if (car.history && car.history.length > 0) {
+                            let hHtml = "";
+                            // On prend les 3 derniers tours de l'historique
+                            car.history.slice(-3).reverse().forEach(h => {
+                                const deltaColor = h.delta.startsWith("+") ? "var(--state-alert)" : "var(--state-green)";
+                                hHtml += `<tr><td>${h.lap}</td><td>${h.time}</td><td style="color:${deltaColor}">${h.delta}</td></tr>`;
+                            });
+                            hBody.innerHTML = hHtml;
+                        } else {
+                            hBody.innerHTML = `<tr><td colspan="3" style="color:var(--4race-text-muted); padding: 10px;">Aucun chrono détecté</td></tr>`;
+                        }
+                    }
+
+                    // Statuts & Couleurs de la carte
+                    const card = document.getElementById(`card-${id}`);
+                    const badge = document.getElementById(`badge-${id}`);
+                    card.className = "car-card"; card.removeAttribute("style");
+
+                    let bText = "En Piste"; let bClass = "status-badge badge-piste";
+
+                    if (data.isRedFlag) {
+                        card.classList.add("state-red-flag"); bText = "STOPPÉ (D. ROUGE)"; bClass = "status-badge badge-alert";
+                    } else if (car.carState === "IN" || car.carState === "FUEL" || car.carState === "OUT" || car.isInsidePit) {
+                        card.classList.add("state-pit"); bText = car.carState === "FUEL" ? "⚡ POMPE" : "STAND"; bClass = "status-badge badge-stand";
+                        if(car.carState === "FUEL") { card.style.borderLeft = "4px solid #3498db"; card.style.backgroundColor = "#07111a"; }
+                    } else {
+                        if (lapsLeft <= 3 && lapsLeft > 0) {
+                            card.classList.add("state-alert"); bText = "ALERTE ESSENCE"; bClass = "status-badge badge-alert";
+                        } else if (data.isFCY) {
+                            card.classList.add("state-fcy"); bText = "FCY SLOW"; bClass = "status-badge badge-fcy";
+                        }
+                    }
+                    if(badge) { badge.innerText = bText; badge.className = bClass; }
+                });
+            }
+        });
+
+        // 🔄 Actualisation du décompte Stint Relais toutes les secondes
+        setInterval(() => {
+            if(!window.fleetState) return;
+            Object.keys(window.fleetState).forEach(id => {
+                const car = window.fleetState[id];
+                const tWidget = document.getElementById(`time-${id}`);
+                if(tWidget && car.relaisStartTime && car.carState === "RUN") {
+                    const minsRoulées = Math.floor((Date.now() - car.relaisStartTime) / 60000);
+                    const limit = window.selectedCircuit === "SPA" ? 90 : 40;
+                    const minsRestantes = limit - minsRoulées;
+                    tWidget.innerText = minsRestantes + " min";
+                    
+                    if (minsRestantes <= 5) tWidget.style.color = "var(--state-alert)";
+                    else if (minsRestantes <= 10) tWidget.style.color = "var(--state-fcy)";
+                    else tWidget.style.color = "var(--state-green)";
+                }
+            });
+        }, 1000);
+    </script>
+</body>
+</html>
