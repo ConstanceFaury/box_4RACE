@@ -291,6 +291,46 @@
                 }
             });
         }, 1000);
+
+        // Fonction de validation du code saisi au Box avec masquage instantané
+        window.validateBoxAccess = function() {
+            const code = document.getElementById("box-code").value.trim().toUpperCase();
+            if (!code.startsWith("BOX")) {
+                alert("Code invalide ! Le code doit commencer par 'BOX' (ex: BOX531 ou BOXG).");
+                return;
+            }
+
+            if (code === "BOXG") {
+                window.boxFilterMode = "GLOBAL";
+                document.getElementById("box-login-popup").style.display = "none";
+                // On réaffiche tout le monde
+                document.querySelectorAll('.car-card').forEach(card => card.style.display = "flex");
+            } else {
+                const targetChassis = code.replace("BOX", "");
+                if(targetChassis.length > 0) {
+                    window.boxFilterMode = targetChassis; // Stocke par exemple "531"
+                    document.getElementById("box-login-popup").style.display = "none";
+                    
+                    // ⚡ CORRECTIF : On applique le filtre immédiatement sur les cartes déjà dessinées
+                    Object.keys(window.fleetState).forEach(id => {
+                        const car = window.fleetState[id];
+                        const currentNum = car?.carNumInput || "";
+                        const cardElement = document.getElementById(`card-${id}`);
+                        
+                        if (cardElement) {
+                            if (currentNum !== targetChassis) {
+                                cardElement.style.display = "none";
+                            } else {
+                                cardElement.style.display = "flex";
+                            }
+                        }
+                    });
+                } else {
+                    alert("Code incomplet !");
+                }
+            }
+        };
+        
     </script>
 </body>
 </html>
